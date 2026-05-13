@@ -3,10 +3,16 @@
   font-family: "Segoe UI", "Yu Gothic UI", "Meiryo", sans-serif;
   background: #16191d;
   color: #f7f1e4;
+  touch-action: manipulation;
 }
 
 * {
   box-sizing: border-box;
+}
+
+html,
+body {
+  overscroll-behavior: none;
 }
 
 body {
@@ -14,27 +20,27 @@ body {
   margin: 0;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: 18px;
   background:
-    radial-gradient(circle at 20% 10%, rgba(216, 192, 122, 0.18), transparent 24%),
-    linear-gradient(135deg, #16191d 0%, #252a2d 50%, #171414 100%);
+    radial-gradient(circle at 18% 8%, rgba(225, 208, 123, 0.16), transparent 24%),
+    linear-gradient(135deg, #15191d 0%, #2c2924 52%, #171414 100%);
 }
 
 .game-shell {
   width: min(1180px, 100%);
   display: grid;
   grid-template-columns: minmax(0, 1fr) 220px;
-  gap: 16px;
+  gap: 14px;
   align-items: stretch;
 }
 
 .stage-wrap {
   position: relative;
   overflow: hidden;
-  border: 2px solid #6b5c44;
+  border: 2px solid #72644b;
   border-radius: 8px;
   background: #202429;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.36);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.38);
   aspect-ratio: 16 / 9;
 }
 
@@ -42,7 +48,6 @@ canvas {
   width: 100%;
   height: 100%;
   display: block;
-  image-rendering: auto;
 }
 
 .overlay {
@@ -54,7 +59,7 @@ canvas {
   gap: 14px;
   padding: 24px;
   text-align: center;
-  background: rgba(16, 18, 20, 0.72);
+  background: rgba(16, 18, 20, 0.76);
 }
 
 .overlay.hidden {
@@ -70,28 +75,33 @@ canvas {
 }
 
 .overlay p {
-  max-width: 34rem;
+  max-width: 38rem;
   margin: 0;
-  font-size: clamp(0.95rem, 2.2vw, 1.2rem);
+  font-size: clamp(0.95rem, 2.2vw, 1.18rem);
   color: #f3e8d4;
 }
 
 button {
-  min-width: 132px;
   border: 0;
   border-radius: 8px;
-  padding: 12px 22px;
   color: #1b1713;
   background: #ffd86b;
   font: inherit;
   font-weight: 800;
   cursor: pointer;
   box-shadow: 0 6px 0 #9e6b2a;
+  user-select: none;
 }
 
-button:active {
+button:active,
+button.pressed {
   transform: translateY(3px);
   box-shadow: 0 3px 0 #9e6b2a;
+}
+
+#startButton {
+  min-width: 132px;
+  padding: 12px 22px;
 }
 
 .hud-panel {
@@ -99,7 +109,7 @@ button:active {
   gap: 10px;
   align-content: start;
   padding: 14px;
-  border: 2px solid #6b5c44;
+  border: 2px solid #72644b;
   border-radius: 8px;
   background: #24201d;
 }
@@ -125,24 +135,87 @@ strong {
 
 .controls {
   color: #e8dcc7;
-  font-size: 0.88rem;
+  font-size: 0.86rem;
 }
 
-@media (max-width: 860px) {
+.touch-controls {
+  display: none;
+  grid-column: 1 / -1;
+  grid-template-columns: 1fr 1.2fr 1fr;
+  gap: 10px;
+}
+
+.touch-button {
+  min-height: 64px;
+  padding: 0;
+  font-size: 1.7rem;
+}
+
+.touch-button.jump {
+  background: #79d6c6;
+  box-shadow: 0 6px 0 #367a70;
+}
+
+.touch-button.jump:active,
+.touch-button.jump.pressed {
+  box-shadow: 0 3px 0 #367a70;
+}
+
+@media (max-width: 900px) {
   body {
-    padding: 12px;
+    min-height: 100dvh;
+    padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+    place-items: start center;
   }
 
   .game-shell {
     grid-template-columns: 1fr;
+    gap: 10px;
   }
 
   .hud-panel {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .hud-panel > div {
+    min-height: 54px;
+    padding: 8px;
   }
 
   .hud-panel .controls {
     grid-column: 1 / -1;
     min-height: auto;
+  }
+
+  strong {
+    font-size: 1.32rem;
+  }
+
+  .touch-controls {
+    display: grid;
+  }
+}
+
+@media (max-width: 520px) {
+  .stage-wrap {
+    aspect-ratio: 16 / 10;
+  }
+
+  .overlay {
+    padding: 14px;
+  }
+
+  .overlay h1 {
+    font-size: clamp(1.65rem, 9vw, 3rem);
+  }
+
+  .overlay p {
+    font-size: 0.92rem;
+  }
+
+  .touch-button {
+    min-height: 58px;
   }
 }

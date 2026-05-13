@@ -2,7 +2,7 @@
 <html lang="ja">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <title>ミムロン上司の悲哀冒険</title>
     <link rel="stylesheet" href="./styles.css">
   </head>
@@ -12,15 +12,15 @@
         <canvas id="game" width="960" height="540"></canvas>
         <div class="overlay" id="overlay">
           <h1>ミムロン上司の悲哀冒険</h1>
-          <p>会議、締切、忖度の荒波を越えろ。ミスすると髪が抜ける。</p>
+          <p>会議、締切、忖度の泥沼を進め。ミスすると髪が抜ける。会社は抜けられない。</p>
           <button id="startButton" type="button">開始</button>
         </div>
       </section>
 
       <aside class="hud-panel">
         <div>
-          <span class="label">髪の毛</span>
-          <strong id="hairCount">12</strong>
+          <span class="label">ライフ</span>
+          <strong id="hairCount">5</strong>
         </div>
         <div>
           <span class="label">進捗</span>
@@ -31,11 +31,17 @@
           <strong id="sorrowCount">0</strong>
         </div>
         <div class="controls">
-          <span>← → 移動</span>
-          <span>Space / ↑ ジャンプ</span>
+          <span>PC: ← → 移動 / Space ジャンプ</span>
+          <span>スマホ: 下のボタンで操作</span>
           <span>R 再挑戦</span>
         </div>
       </aside>
+
+      <nav class="touch-controls" aria-label="スマホ操作">
+        <button class="touch-button" id="leftButton" type="button" aria-label="左へ移動">←</button>
+        <button class="touch-button jump" id="jumpButton" type="button" aria-label="ジャンプ">跳</button>
+        <button class="touch-button" id="rightButton" type="button" aria-label="右へ移動">→</button>
+      </nav>
     </main>
 
     <script src="./game.js"></script>
