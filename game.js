@@ -10,83 +10,124 @@ const W = canvas.width;
 const H = canvas.height;
 const groundY = 438;
 const maxLife = 5;
+const stageSize = 1900;
 const keys = new Set();
 const touch = { left: false, right: false, jump: false };
 
+const enemyTemplates = [
+  { name: "ザザ1", line: "ポイント万歳", color: "#85513d" },
+  { name: "クロチャン", line: "俺だって働いている", color: "#34343b" },
+  { name: "ザザ2", line: "あいつが悪い", color: "#5d6d8e" }
+];
+
 const stages = [
   {
-    name: "朝礼回廊",
-    quote: "昨日の反省を今日の残業に変換する場所。",
+    name: "平社員フロア",
+    rank: "平社員",
+    quote: "出世階段の一段目は、だいたいコピー機の前にある。",
     color: "#667c91",
-    boss: null,
-    hazards: [
-      { x: 520, w: 44, label: "議事録" },
-      { x: 820, w: 52, label: "未読" },
-      { x: 1180, w: 46, label: "稟議" }
-    ],
+    enemies: [450, 760, 1120, 1440],
     platforms: [
       { x: 390, y: 338, w: 130 },
       { x: 940, y: 310, w: 150 }
-    ]
+    ],
+    boss: null
   },
   {
-    name: "締切坂",
-    quote: "急ぎではない。ただし昨日ほしい。",
+    name: "主任デスク島",
+    rank: "主任",
+    quote: "権限は増えない。責任だけが名刺より先に刷られる。",
     color: "#8a6f52",
+    enemies: [360, 650, 1010, 1290],
+    platforms: [
+      { x: 560, y: 330, w: 130 },
+      { x: 900, y: 280, w: 120 },
+      { x: 1200, y: 330, w: 150 }
+    ],
     boss: {
       name: "タカタ・ソーム",
-      x: 1460,
-      w: 90,
+      x: 1500,
+      w: 92,
       h: 116,
       hp: 3,
       label: "中ボス",
       line: "その資料、味は薄いが圧は濃いな。",
       defeat: "タカタ・ソームは会議室の予約だけ残して消えた。"
-    },
-    hazards: [
-      { x: 420, w: 44, label: "差戻" },
-      { x: 720, w: 48, label: "炎上" },
-      { x: 1060, w: 44, label: "修正" },
-      { x: 1320, w: 58, label: "再提出" }
-    ],
-    platforms: [
-      { x: 560, y: 330, w: 130 },
-      { x: 900, y: 280, w: 120 },
-      { x: 1200, y: 330, w: 150 }
-    ]
+    }
   },
   {
-    name: "役員沼",
-    quote: "責任の所在だけが、いつも在宅勤務。",
+    name: "部長前廊下",
+    rank: "課長代理",
+    quote: "境界線が見えたら、まず稟議に貼っておく。",
     color: "#5f7b62",
+    enemies: [330, 610, 890, 1210, 1430],
+    platforms: [
+      { x: 500, y: 315, w: 120 },
+      { x: 790, y: 255, w: 110 },
+      { x: 1110, y: 300, w: 120 },
+      { x: 1430, y: 250, w: 130 }
+    ],
     boss: {
       name: "タッキー・キョクチョウ",
-      x: 1540,
+      x: 1580,
       w: 112,
       h: 134,
       hp: 5,
       label: "ラスボス",
       line: "君の裁量でやってくれ。結果は私の顔色で決まる。",
       defeat: "タッキー・キョクチョウは『検討する』と言い残し、実質敗北した。"
-    },
-    hazards: [
-      { x: 360, w: 58, label: "忖度" },
-      { x: 660, w: 54, label: "空気" },
-      { x: 990, w: 46, label: "詰問" },
-      { x: 1280, w: 70, label: "無茶振り" }
-    ],
-    platforms: [
-      { x: 500, y: 315, w: 120 },
-      { x: 790, y: 255, w: 110 },
-      { x: 1110, y: 300, w: 120 },
-      { x: 1430, y: 250, w: 130 }
-    ]
+    }
   }
 ];
 
 let state;
 let lastTime = 0;
 let audio;
+
+function rand(min, max) {
+  return min + Math.random() * (max - min);
+}
+
+function makeEnemies(stage) {
+  return stage.enemies.map((x, index) => {
+    const template = enemyTemplates[index % enemyTemplates.length];
+    return {
+      ...template,
+      x,
+      baseX: x,
+      y: groundY - 82,
+      w: 52,
+      h: 82,
+      vx: rand(45, 95) * (Math.random() > 0.5 ? 1 : -1),
+      range: rand(70, 145),
+      speakTimer: rand(0.4, 2.2),
+      hitCooldown: 0
+    };
+  });
+}
+
+function makeItems(stageIndex) {
+  const items = [
+    { type: "expense", name: "ケーヒセツゲン", x: 680, y: 292, w: 38, h: 38, taken: false },
+    { type: "expense", name: "ケーヒセツゲン", x: 1280, y: 388, w: 38, h: 38, taken: false }
+  ];
+  if (Math.random() < 0.34) {
+    items.push({
+      type: "boundary",
+      name: "キョウカイショー",
+      x: rand(520, 1450),
+      y: rand(235, 350),
+      w: 42,
+      h: 42,
+      taken: false,
+      bob: 0
+    });
+  }
+  if (stageIndex === 2) {
+    items.push({ type: "boundary", name: "キョウカイショー", x: 1050, y: 238, w: 42, h: 42, taken: false, bob: 0 });
+  }
+  return items;
+}
 
 function cloneBoss(stage) {
   if (!stage.boss) return null;
@@ -100,6 +141,21 @@ function cloneBoss(stage) {
   };
 }
 
+function loadStage(index) {
+  state.stageIndex = index;
+  state.scroll = 0;
+  state.stageBoss = cloneBoss(stages[index]);
+  state.enemies = makeEnemies(stages[index]);
+  state.items = makeItems(index);
+  state.boss.x = 120;
+  state.boss.y = groundY - state.boss.h;
+  state.boss.vx = 0;
+  state.boss.vy = 0;
+  state.boss.grounded = true;
+  state.message = `${stages[index].rank}に昇格`;
+  state.messageTime = 1.8;
+}
+
 function resetGame() {
   state = {
     running: false,
@@ -110,10 +166,13 @@ function resetGame() {
     life: maxLife,
     sorrow: 0,
     invincible: 0,
+    turbo: 0,
     message: "",
     messageTime: 0,
     fallenHair: [],
-    stageBoss: cloneBoss(stages[0]),
+    stageBoss: null,
+    enemies: [],
+    items: [],
     boss: {
       x: 120,
       y: groundY - 82,
@@ -125,6 +184,9 @@ function resetGame() {
       face: 1
     }
   };
+  loadStage(0);
+  state.message = "";
+  state.messageTime = 0;
   updateHud();
 }
 
@@ -160,12 +222,14 @@ function blip(freq, duration, type = "square", gain = 0.35) {
 function startBgm() {
   if (!audio || audio.timer) return;
   const melody = [262, 330, 392, 330, 294, 370, 440, 196];
+  const turboMelody = [523, 659, 784, 988, 784, 659, 587, 523];
   const bass = [98, 98, 131, 98, 110, 110, 147, 73];
   audio.timer = setInterval(() => {
     if (!state.running) return;
     const i = audio.beat % melody.length;
-    blip(melody[i], 0.12, i % 3 === 0 ? "triangle" : "square", 0.18);
-    if (i % 2 === 0) blip(bass[i], 0.18, "sawtooth", 0.13);
+    const fast = state.turbo > 0;
+    blip((fast ? turboMelody : melody)[i], fast ? 0.08 : 0.12, i % 3 === 0 ? "triangle" : "square", fast ? 0.22 : 0.18);
+    if (i % 2 === 0) blip(bass[i], fast ? 0.11 : 0.18, "sawtooth", 0.13);
     audio.beat += 1;
   }, 210);
 }
@@ -181,15 +245,23 @@ function currentStage() {
   return stages[state.stageIndex];
 }
 
-function stageLength() {
-  return 1780;
-}
-
 function updateHud() {
   hairCount.textContent = `${state.life}/${maxLife}`;
   sorrowCount.textContent = state.sorrow;
-  const progress = Math.min(100, Math.round((state.scroll / (stageLength() - W + 210)) * 100));
+  const progress = Math.min(100, Math.round((state.scroll / (stageSize - W + 210)) * 100));
   progressCount.textContent = `${Math.max(0, progress)}%`;
+}
+
+function spawnHair() {
+  for (let i = 0; i < 8; i += 1) {
+    state.fallenHair.push({
+      x: state.boss.x + 12 + Math.random() * 30,
+      y: state.boss.y + 4,
+      vx: -100 + Math.random() * 200,
+      vy: -180 - Math.random() * 100,
+      life: 1.25
+    });
+  }
 }
 
 function loseLife(reason) {
@@ -200,15 +272,7 @@ function loseLife(reason) {
   state.message = reason;
   state.messageTime = 1.7;
   blip(92, 0.3, "sawtooth", 0.42);
-  for (let i = 0; i < 8; i += 1) {
-    state.fallenHair.push({
-      x: state.boss.x + 12 + Math.random() * 30,
-      y: state.boss.y + 4,
-      vx: -100 + Math.random() * 200,
-      vy: -180 - Math.random() * 100,
-      life: 1.25
-    });
-  }
+  spawnHair();
   if (state.life <= 0) {
     state.gameOver = true;
     state.running = false;
@@ -226,18 +290,11 @@ function showOverlay(title, text, button) {
 
 function nextStage() {
   if (state.stageIndex < stages.length - 1) {
-    state.stageIndex += 1;
-    state.scroll = 0;
-    state.stageBoss = cloneBoss(currentStage());
-    state.boss.x = 120;
-    state.boss.y = groundY - state.boss.h;
-    state.boss.vy = 0;
-    state.message = currentStage().name;
-    state.messageTime = 1.8;
+    loadStage(state.stageIndex + 1);
   } else {
     state.won = true;
     state.running = false;
-    showOverlay("称号獲得: ウンドーブチョー", "ミムロンは全困難を越えた。残った髪と倫理観は、どちらも希少資源だ。", "再び悲哀へ");
+    showOverlay("称号獲得: ウンドーブチョー", "ミムロンは出世への道を駆け抜けた。残った髪と倫理観は、どちらも希少資源だ。", "再び悲哀へ");
     blip(523, 0.16, "triangle", 0.35);
     setTimeout(() => blip(659, 0.16, "triangle", 0.35), 120);
     setTimeout(() => blip(784, 0.32, "triangle", 0.35), 260);
@@ -249,26 +306,88 @@ function isJumpPressed() {
   return keys.has("Space") || keys.has("ArrowUp") || keys.has("KeyW") || touch.jump;
 }
 
+function rectsOverlap(a, b) {
+  return a.x + a.w > b.x && a.x < b.x + b.w && a.y + a.h > b.y && a.y < b.y + b.h;
+}
+
+function updateEnemies(dt) {
+  const player = state.boss;
+  for (const enemy of state.enemies) {
+    enemy.x += enemy.vx * dt;
+    if (enemy.x < enemy.baseX - enemy.range || enemy.x > enemy.baseX + enemy.range) {
+      enemy.vx *= -1;
+      enemy.x = Math.max(enemy.baseX - enemy.range, Math.min(enemy.x, enemy.baseX + enemy.range));
+    }
+    if (Math.random() < 0.008) enemy.vx *= -1;
+    enemy.speakTimer -= dt;
+    enemy.hitCooldown = Math.max(0, enemy.hitCooldown - dt);
+    if (enemy.speakTimer <= 0) {
+      enemy.speakTimer = rand(1.3, 3.6);
+    }
+
+    const screenEnemy = { x: enemy.x - state.scroll, y: enemy.y, w: enemy.w, h: enemy.h };
+    if (!rectsOverlap(player, screenEnemy)) continue;
+
+    const stomp = player.vy > 120 && player.y + player.h < screenEnemy.y + 28;
+    if (stomp && enemy.hitCooldown <= 0) {
+      enemy.hitCooldown = 0.8;
+      player.vy = -430;
+      enemy.vx *= -1;
+      state.message = `${enemy.name}「${enemy.line}」を踏み越えた`;
+      state.messageTime = 1.7;
+      blip(620, 0.08, "square", 0.32);
+    } else {
+      loseLife(`${enemy.name}「${enemy.line}」で髪が抜けた`);
+      player.x = Math.max(40, player.x - 28);
+    }
+  }
+}
+
+function updateItems(dt) {
+  const player = state.boss;
+  for (const item of state.items) {
+    if (item.taken) continue;
+    item.bob = (item.bob || 0) + dt * 4;
+    const screenItem = {
+      x: item.x - state.scroll,
+      y: item.y + Math.sin(item.bob) * 8,
+      w: item.w,
+      h: item.h
+    };
+    if (!rectsOverlap(player, screenItem)) continue;
+    item.taken = true;
+    if (item.type === "expense") {
+      const before = state.life;
+      state.life = Math.min(maxLife, state.life + 1);
+      state.message = before === maxLife ? "ケーヒセツゲン: 回復した気分だけ経費で落ちた" : "ケーヒセツゲン獲得: 髪が1本だけ予算復活";
+      state.messageTime = 1.9;
+      blip(740, 0.12, "triangle", 0.28);
+    } else {
+      state.invincible = 5;
+      state.turbo = 5;
+      state.message = "超レア: キョウカイショー発動。5秒だけ境界線が味方。";
+      state.messageTime = 2.3;
+      blip(988, 0.12, "square", 0.35);
+      setTimeout(() => blip(1175, 0.14, "square", 0.35), 100);
+    }
+    updateHud();
+  }
+}
+
 function updateBossFight(dt) {
   const stageBoss = state.stageBoss;
   if (!stageBoss || stageBoss.defeated) return;
-  const boss = state.boss;
+  const player = state.boss;
   stageBoss.hitCooldown = Math.max(0, stageBoss.hitCooldown - dt);
   stageBoss.wobble += dt;
-  const bx = stageBoss.x - state.scroll;
-  const collides =
-    boss.x + boss.w > bx &&
-    boss.x < bx + stageBoss.w &&
-    boss.y + boss.h > stageBoss.y &&
-    boss.y < stageBoss.y + stageBoss.h;
+  const screenBoss = { x: stageBoss.x - state.scroll, y: stageBoss.y, w: stageBoss.w, h: stageBoss.h };
+  if (!rectsOverlap(player, screenBoss)) return;
 
-  if (!collides) return;
-
-  const stomp = boss.vy > 120 && boss.y + boss.h < stageBoss.y + 34;
+  const stomp = player.vy > 120 && player.y + player.h < screenBoss.y + 34;
   if (stomp && stageBoss.hitCooldown <= 0) {
     stageBoss.hp -= 1;
     stageBoss.hitCooldown = 0.55;
-    boss.vy = -430;
+    player.vy = -430;
     state.message = stageBoss.hp > 0 ? `${stageBoss.name}「${stageBoss.line}」` : stageBoss.defeat;
     state.messageTime = 2.2;
     blip(620, 0.08, "square", 0.32);
@@ -280,74 +399,70 @@ function updateBossFight(dt) {
     }
   } else {
     loseLife(`${stageBoss.name}の評価面談で髪が抜けた`);
-    boss.vx = -180;
-    boss.x = Math.max(40, boss.x - 26);
+    player.x = Math.max(40, player.x - 30);
   }
 }
 
 function update(dt) {
   if (!state.running) return;
-  const boss = state.boss;
+  const player = state.boss;
   const stage = currentStage();
+  const turboSpeed = state.turbo > 0 ? 1.75 : 1;
   const move = (keys.has("ArrowRight") || keys.has("KeyD") || touch.right ? 1 : 0) - (keys.has("ArrowLeft") || keys.has("KeyA") || touch.left ? 1 : 0);
-  boss.vx = move * 250;
-  if (move !== 0) boss.face = Math.sign(move);
+  player.vx = move * 250 * turboSpeed;
+  if (state.turbo > 0 && move === 0) player.vx = 370;
+  if (player.vx !== 0) player.face = Math.sign(player.vx);
 
-  if (isJumpPressed() && boss.grounded) {
-    boss.vy = -540;
-    boss.grounded = false;
+  if (isJumpPressed() && player.grounded) {
+    player.vy = -540;
+    player.grounded = false;
     blip(440, 0.08, "triangle", 0.12);
   }
 
-  boss.vy += 1500 * dt;
-  boss.x += boss.vx * dt;
-  boss.y += boss.vy * dt;
+  player.vy += 1500 * dt;
+  player.x += player.vx * dt;
+  player.y += player.vy * dt;
 
-  if (boss.x < 40) boss.x = 40;
-  if (boss.x > W * 0.56 && boss.vx > 0) {
-    state.scroll += boss.vx * dt;
-    boss.x = W * 0.56;
+  if (player.x < 40) player.x = 40;
+  if (player.x > W * 0.56 && player.vx > 0) {
+    state.scroll += player.vx * dt;
+    player.x = W * 0.56;
   }
 
-  boss.grounded = false;
-  const floor = groundY - boss.h;
-  if (boss.y >= floor) {
-    boss.y = floor;
-    boss.vy = 0;
-    boss.grounded = true;
+  player.grounded = false;
+  const floor = groundY - player.h;
+  if (player.y >= floor) {
+    player.y = floor;
+    player.vy = 0;
+    player.grounded = true;
   }
 
   for (const platform of stage.platforms) {
     const px = platform.x - state.scroll;
-    const hitX = boss.x + boss.w > px && boss.x < px + platform.w;
-    const hitY = boss.y + boss.h > platform.y - 12 && boss.y + boss.h < platform.y + 22;
-    if (hitX && hitY && boss.vy >= 0) {
-      boss.y = platform.y - boss.h;
-      boss.vy = 0;
-      boss.grounded = true;
+    const hitX = player.x + player.w > px && player.x < px + platform.w;
+    const hitY = player.y + player.h > platform.y - 12 && player.y + player.h < platform.y + 22;
+    if (hitX && hitY && player.vy >= 0) {
+      player.y = platform.y - player.h;
+      player.vy = 0;
+      player.grounded = true;
     }
   }
 
-  for (const hazard of stage.hazards) {
-    const hx = hazard.x - state.scroll;
-    const collides = boss.x + boss.w - 8 > hx && boss.x + 8 < hx + hazard.w && boss.y + boss.h > groundY - 58;
-    if (collides) {
-      loseLife(`${hazard.label}で髪が抜けた。毛根は労基に相談中。`);
-    }
-  }
-
+  updateEnemies(dt);
+  updateItems(dt);
   updateBossFight(dt);
 
   const bossGateOpen = !state.stageBoss || state.stageBoss.defeated;
-  if (state.scroll > stageLength() - W + 190 && bossGateOpen) {
+  if (state.scroll > stageSize - W + 190 && bossGateOpen) {
     nextStage();
-  } else if (state.scroll > stageLength() - W + 190 && !bossGateOpen) {
-    state.scroll = stageLength() - W + 180;
+  } else if (state.scroll > stageSize - W + 190 && !bossGateOpen) {
+    state.scroll = stageSize - W + 180;
     state.message = `${state.stageBoss.label}: ${state.stageBoss.name}を踏んで突破`;
     state.messageTime = 1.4;
   }
 
   state.invincible = Math.max(0, state.invincible - dt);
+  state.turbo = Math.max(0, state.turbo - dt);
   state.messageTime = Math.max(0, state.messageTime - dt);
   state.fallenHair = state.fallenHair.filter((hair) => {
     hair.vy += 780 * dt;
@@ -362,59 +477,130 @@ function update(dt) {
 function drawBackground(stage) {
   const sky = ctx.createLinearGradient(0, 0, 0, H);
   sky.addColorStop(0, stage.color);
-  sky.addColorStop(1, "#222126");
+  sky.addColorStop(1, "#24262a");
   ctx.fillStyle = sky;
   ctx.fillRect(0, 0, W, H);
 
-  ctx.fillStyle = "rgba(255, 246, 205, 0.16)";
-  for (let i = 0; i < 8; i += 1) {
-    const x = (i * 180 - state.scroll * 0.25) % (W + 220) - 90;
-    ctx.fillRect(x, 82 + (i % 3) * 28, 112, 54);
-    ctx.fillRect(x + 18, 70 + (i % 2) * 18, 70, 80);
+  ctx.fillStyle = "rgba(237, 244, 255, 0.2)";
+  for (let i = 0; i < 7; i += 1) {
+    const x = (i * 190 - state.scroll * 0.2) % (W + 260) - 120;
+    ctx.fillRect(x, 68, 126, 96);
+    ctx.fillStyle = "rgba(35, 42, 48, 0.35)";
+    for (let r = 0; r < 3; r += 1) {
+      for (let c = 0; c < 4; c += 1) {
+        ctx.fillRect(x + 16 + c * 25, 84 + r * 24, 14, 12);
+      }
+    }
+    ctx.fillStyle = "rgba(237, 244, 255, 0.2)";
   }
 
-  ctx.fillStyle = "#2e2a25";
+  ctx.fillStyle = "#34302b";
   ctx.fillRect(0, groundY, W, H - groundY);
-  ctx.fillStyle = "#514330";
+  ctx.fillStyle = "#5a4e3c";
   for (let x = -((state.scroll * 0.8) % 58); x < W; x += 58) {
     ctx.fillRect(x, groundY + 28, 34, 8);
   }
+
+  ctx.fillStyle = "rgba(255, 216, 107, 0.2)";
+  ctx.fillRect(W - 170, 26, 134, 44);
+  ctx.fillStyle = "#fff4ce";
+  ctx.font = "800 16px Meiryo, sans-serif";
+  ctx.textAlign = "center";
+  ctx.fillText(`現在: ${stage.rank}`, W - 103, 54);
 }
 
-function drawBoss() {
-  const b = state.boss;
+function drawPerson(x, y, w, h, color, face = 1, name = "") {
   ctx.save();
-  if (state.invincible > 0 && Math.floor(state.invincible * 18) % 2 === 0) ctx.globalAlpha = 0.45;
-  ctx.translate(b.x + b.w / 2, b.y);
-  ctx.scale(b.face, 1);
-
-  ctx.fillStyle = "#35302b";
-  ctx.fillRect(-22, 28, 44, 52);
-  ctx.fillStyle = "#6d4636";
-  ctx.fillRect(-18, 38, 36, 10);
+  ctx.translate(x + w / 2, y);
+  ctx.scale(face, 1);
+  ctx.fillStyle = color;
+  ctx.fillRect(-w * 0.38, h * 0.32, w * 0.76, h * 0.52);
+  ctx.fillStyle = "#24242a";
+  ctx.fillRect(-w * 0.16, h * 0.44, w * 0.32, h * 0.28);
   ctx.fillStyle = "#f0bf86";
   ctx.beginPath();
-  ctx.roundRect(-24, 0, 48, 40, 16);
+  ctx.roundRect(-w * 0.34, 0, w * 0.68, h * 0.44, 14);
   ctx.fill();
-
-  ctx.fillStyle = "#1e1a18";
-  const hairStrands = Math.max(0, state.life);
-  for (let i = 0; i < hairStrands; i += 1) {
-    const x = -18 + i * 9;
-    ctx.fillRect(x, -11 - (i % 2) * 4, 4, 15);
-  }
-
   ctx.fillStyle = "#151515";
-  ctx.fillRect(5, 15, 5, 5);
+  ctx.fillRect(4, h * 0.18, 5, 5);
   ctx.fillStyle = "#8b2f25";
-  ctx.fillRect(-5, 27, 18, 4);
+  ctx.fillRect(-6, h * 0.3, 16, 4);
   ctx.fillStyle = "#d9d2c2";
-  ctx.fillRect(-30, 36, 10, 32);
-  ctx.fillRect(20, 36, 10, 32);
+  ctx.fillRect(-w * 0.52, h * 0.42, 10, h * 0.32);
+  ctx.fillRect(w * 0.35, h * 0.42, 10, h * 0.32);
   ctx.fillStyle = "#222";
-  ctx.fillRect(-18, 80, 14, 20);
-  ctx.fillRect(5, 80, 14, 20);
+  ctx.fillRect(-w * 0.27, h * 0.84, 13, h * 0.24);
+  ctx.fillRect(w * 0.05, h * 0.84, 13, h * 0.24);
   ctx.restore();
+
+  if (name) {
+    ctx.fillStyle = "#fff0d3";
+    ctx.font = "700 13px Meiryo, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(name, x + w / 2, y - 10);
+  }
+}
+
+function drawPlayer() {
+  const p = state.boss;
+  ctx.save();
+  if (state.invincible > 0 && Math.floor(state.invincible * 18) % 2 === 0) ctx.globalAlpha = 0.45;
+  if (state.turbo > 0) {
+    ctx.fillStyle = "rgba(121, 214, 198, 0.28)";
+    ctx.fillRect(p.x - 40, p.y + 16, 32, 18);
+    ctx.fillRect(p.x - 70, p.y + 42, 48, 14);
+  }
+  drawPerson(p.x, p.y, p.w, p.h, "#35302b", p.face, "");
+  ctx.fillStyle = "#1e1a18";
+  for (let i = 0; i < state.life; i += 1) {
+    ctx.fillRect(p.x + 10 + i * 8, p.y - 11 - (i % 2) * 4, 4, 15);
+  }
+  ctx.restore();
+}
+
+function drawEnemies() {
+  for (const enemy of state.enemies) {
+    const x = enemy.x - state.scroll;
+    if (x < -120 || x > W + 120) continue;
+    drawPerson(x, enemy.y, enemy.w, enemy.h, enemy.color, Math.sign(enemy.vx) || 1, enemy.name);
+    if (enemy.speakTimer > 2.4) {
+      ctx.fillStyle = "rgba(0, 0, 0, 0.62)";
+      ctx.fillRect(x - 30, enemy.y - 52, 120, 30);
+      ctx.fillStyle = "#fff6d7";
+      ctx.font = "700 12px Meiryo, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText(enemy.line, x + enemy.w / 2, enemy.y - 32);
+    }
+  }
+}
+
+function drawItems() {
+  for (const item of state.items) {
+    if (item.taken) continue;
+    const x = item.x - state.scroll;
+    const y = item.y + Math.sin(item.bob || 0) * 8;
+    if (x < -80 || x > W + 80) continue;
+    if (item.type === "expense") {
+      ctx.fillStyle = "#f3c94b";
+      ctx.beginPath();
+      ctx.arc(x + item.w / 2, y + item.h / 2, item.w / 2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#2a2110";
+      ctx.font = "900 22px Meiryo, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("￥", x + item.w / 2, y + 27);
+    } else {
+      ctx.fillStyle = "#79d6c6";
+      ctx.fillRect(x, y, item.w, item.h);
+      ctx.fillStyle = "#12332f";
+      ctx.font = "900 20px Meiryo, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("境", x + item.w / 2, y + 28);
+      ctx.fillStyle = "#fff6d7";
+      ctx.font = "700 12px Meiryo, sans-serif";
+      ctx.fillText("RARE", x + item.w / 2, y - 7);
+    }
+  }
 }
 
 function drawStageBoss() {
@@ -423,49 +609,15 @@ function drawStageBoss() {
   const x = b.x - state.scroll;
   if (x < -160 || x > W + 140) return;
   const shake = Math.sin(b.wobble * 8) * 3;
-  ctx.save();
-  ctx.translate(x + b.w / 2 + shake, b.y);
-  ctx.fillStyle = b.label === "ラスボス" ? "#492c69" : "#7a4538";
-  ctx.fillRect(-b.w / 2, 26, b.w, b.h - 26);
-  ctx.fillStyle = "#f0bf86";
-  ctx.beginPath();
-  ctx.roundRect(-b.w / 2 + 14, 0, b.w - 28, 48, 16);
-  ctx.fill();
-  ctx.fillStyle = "#1a1514";
-  ctx.fillRect(-22, 15, 8, 7);
-  ctx.fillRect(16, 15, 8, 7);
-  ctx.fillStyle = "#d9d2c2";
-  ctx.fillRect(-b.w / 2 - 12, 54, 18, 48);
-  ctx.fillRect(b.w / 2 - 6, 54, 18, 48);
+  drawPerson(x + shake, b.y, b.w, b.h, b.label === "ラスボス" ? "#492c69" : "#7a4538", -1, b.name);
   ctx.fillStyle = "#ffd86b";
   ctx.font = "800 16px Meiryo, sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(b.label, 0, -22);
-  ctx.fillStyle = "#fff3d4";
-  ctx.fillText(b.name, 0, -4);
+  ctx.fillText(b.label, x + b.w / 2, b.y - 32);
   ctx.fillStyle = "#111";
-  ctx.fillRect(-48, -48, 96, 9);
+  ctx.fillRect(x + b.w / 2 - 48, b.y - 24, 96, 9);
   ctx.fillStyle = "#e35f4f";
-  ctx.fillRect(-48, -48, 96 * (b.hp / b.maxHp), 9);
-  ctx.restore();
-}
-
-function drawHazards(stage) {
-  for (const hazard of stage.hazards) {
-    const x = hazard.x - state.scroll;
-    if (x < -100 || x > W + 100) continue;
-    ctx.fillStyle = "#b83d2f";
-    ctx.beginPath();
-    ctx.moveTo(x, groundY);
-    ctx.lineTo(x + hazard.w / 2, groundY - 62);
-    ctx.lineTo(x + hazard.w, groundY);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#fff0d3";
-    ctx.font = "700 14px Meiryo, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(hazard.label, x + hazard.w / 2, groundY - 68);
-  }
+  ctx.fillRect(x + b.w / 2 - 48, b.y - 24, 96 * (b.hp / b.maxHp), 9);
 }
 
 function drawPlatforms(stage) {
@@ -480,20 +632,27 @@ function drawPlatforms(stage) {
 
 function drawText(stage) {
   ctx.fillStyle = "rgba(20, 18, 16, 0.72)";
-  ctx.fillRect(24, 22, 430, 86);
+  ctx.fillRect(24, 22, 486, 88);
   ctx.fillStyle = "#ffd86b";
-  ctx.font = "800 28px Meiryo, sans-serif";
+  ctx.font = "800 27px Meiryo, sans-serif";
   ctx.textAlign = "left";
   ctx.fillText(stage.name, 42, 58);
   ctx.fillStyle = "#f3e8d4";
   ctx.font = "16px Meiryo, sans-serif";
   ctx.fillText(stage.quote, 42, 88);
 
+  if (state.turbo > 0) {
+    ctx.fillStyle = "#79d6c6";
+    ctx.font = "900 18px Meiryo, sans-serif";
+    ctx.textAlign = "right";
+    ctx.fillText(`無敵 ${state.turbo.toFixed(1)}秒`, W - 40, 94);
+  }
+
   if (state.messageTime > 0) {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.62)";
-    ctx.fillRect(W / 2 - 290, 126, 580, 58);
+    ctx.fillStyle = "rgba(0, 0, 0, 0.66)";
+    ctx.fillRect(W / 2 - 310, 126, 620, 58);
     ctx.fillStyle = "#fff6d7";
-    ctx.font = "800 20px Meiryo, sans-serif";
+    ctx.font = "800 19px Meiryo, sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(state.message, W / 2, 162);
   }
@@ -515,9 +674,10 @@ function render() {
   const stage = currentStage();
   drawBackground(stage);
   drawPlatforms(stage);
-  drawHazards(stage);
+  drawItems();
+  drawEnemies();
   drawStageBoss();
-  drawBoss();
+  drawPlayer();
   drawHairParticles();
   drawText(stage);
 }
